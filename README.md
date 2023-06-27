@@ -1,5 +1,4 @@
-# Advanced-Python-Seminar
-## 2023 Summer Seminar<br>
+# 2023 Summer Seminar<br>
 ____
 
 <details>
