@@ -9,6 +9,8 @@ def PrintSVDResultSize(Umat, Smat, Vmat_T, text):
     print('Umat_' + text + ' size: ', Umat.shape)
     print('Smat_' + text + ' size: ', Smat.shape)
     print('Vmat_T_' + text + ' size: ', Vmat_T.shape)
+    print('Number of Multiplication Operations: ', 
+          Umat.shape[0]*Umat.shape[1]*Smat.shape[0] + Umat.shape[0]*Vmat_T.shape[0]*Vmat_T.shape[1])
 
 def RestoreImage(Umat, Smat, Vmat_T, text, imgname):
     Smat_Diag = cp.diag(Smat)
@@ -17,6 +19,7 @@ def RestoreImage(Umat, Smat, Vmat_T, text, imgname):
     print(Smat_Diag.shape)
     # 행렬 곱셈
     RestoredImage = Umat @ Smat_Diag @ Vmat_T
+    print(RestoredImage.device)
     # opencv에서는 (열, 행)으로 사용하므로 transpose함
     RestoredImage_CPU = cp.transpose(RestoredImage)
     # cpu로 옮긴 후 opencv imwrite함
@@ -34,11 +37,9 @@ def ImgtoCparray(imgname):
     print(gray_resized.shape)
     gray_cupy = cp.asarray(gray_resized)
 
-    # cupyx.scipy.sparse.linalg.svds의 경우 real 또는 complex array만 지원하기 때문에, 이미지 데이터를 float32로 변환
-    cupy_img = gray_cupy.astype(cp.float32)
-    return cupy_img, gray_resized
+    return gray_cupy, gray_resized
 
-imgname = '720'
+imgname = '8k'
 cupy_img, numpy_img = ImgtoCparray(imgname)
 
 # Full SVD
@@ -56,12 +57,13 @@ PrintSVDResultSize(Umat_economy, Smat_economy, Vmat_T_economy, 'economy')
 RestoreImage(Umat_economy, Smat_economy, Vmat_T_economy, 'economy', imgname)
 
 # Truncated SVD (k=3)
+# real 또는 complex array만 지원하기 때문에, 이미지 데이터를 float32로 변환
+numpy_img = numpy_img.astype(np.float32)
+cupy_img = cupy_img.astype(cp.float32)
+# 실행시간 측정
 print(benchmark(scipy.sparse.linalg.svds, (numpy_img, 3), n_repeat=20))
 print(benchmark(cupyx.scipy.sparse.linalg.svds, (cupy_img, 3), n_repeat=20))
+# U, S, Vt 구함
 Umat_trunc, Smat_trunc, Vmat_T_trunc = cupyx.scipy.sparse.linalg.svds(cupy_img, k=3)
 PrintSVDResultSize(Umat_trunc, Smat_trunc, Vmat_T_trunc, 'trunc')
 RestoreImage(Umat_trunc, Smat_trunc, Vmat_T_trunc, 'trunc', imgname)
-
-# Truncated SVD (k=6)
-Umat_trunc, Smat_trunc, Vmat_T_trunc = cupyx.scipy.sparse.linalg.svds(cupy_img)
-PrintSVDResultSize(Umat_trunc, Smat_trunc, Vmat_T_trunc, 'trunc')
